@@ -1,0 +1,40 @@
+pipeline {
+  agent any
+  options { timestamps() }
+  stages {
+    stage('Checkout') {
+      steps {
+        git branch: 'main', url: 'https://github.com/<your-username>/jenkins-ci-demo.git'
+      }
+    }
+    stage('Build') {
+      steps {
+        // create venv and install deps
+        bat '''
+          python -m venv .venv
+          call .venv\\Scripts\\activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+        '''
+      }
+    }
+    stage('Test') {
+      steps {
+        bat '''
+          call .venv\\Scripts\\activate
+          pytest -q
+        '''
+      }
+    }
+    stage('Deploy') {
+      steps {
+        bat '''
+          if not exist deploy mkdir deploy
+          powershell -NoProfile -Command ^
+            "Copy-Item -Path * -Destination deploy -Recurse -Force -Exclude .venv,'.git','deploy','__pycache__'"
+        '''
+        archiveArtifacts artifacts: 'deploy/**', onlyIfSuccessful: true
+      }
+    }
+  }
+}
